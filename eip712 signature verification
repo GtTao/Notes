@@ -1,0 +1,105 @@
+#### Example of EIP712 Signature and Verification
+
+To provide a full example of EIP712 including signature on the client and verification on the smart contract, we can follow the steps outlined below:
+
+1. Define the EIP712 Domain:
+   - The EIP712 Domain is a set of parameters that define the context in which the signature is being used. It includes the name, version, chain ID, verifying contract address, and a salt value.
+   - Here's an example of how the EIP712 Domain can be defined:
+     ```solidity
+     struct EIP712Domain {
+         string name;
+         string version;
+         uint256 chainId;
+         address verifyingContract;
+         bytes32 salt;
+     }
+     ```
+
+2. Define the Struct for the Data to be Signed:
+   - The data to be signed should be structured according to a predefined format. It typically includes the relevant parameters that need to be verified on the smart contract.
+   - Here's an example of how the data struct can be defined:
+     ```solidity
+     struct Transaction {
+         address to;
+         uint256 amount;
+         uint256 nonce;
+     }
+     ```
+
+3. Generate the Hash of the Data:
+   - To generate the hash of the data, you need to concatenate the EIP712 Domain hash with the hash of the data struct.
+   - Here's an example of how the hash can be generated:
+     ```solidity
+     bytes32 hash = keccak256(abi.encodePacked(
+         keccak256(abi.encodePacked(
+             "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)",
+             keccak256(abi.encodePacked(
+                 "MyCrypto", // name
+                 "1.0.0", // version
+                 1, // chainId
+                 address(this), // verifyingContract
+                 bytes32(0x76e22a8ee58573472b9d7b73c41ee29160bc2759195434c1bc1201ae4769afd7) // salt
+             ))
+         )),
+         keccak256(abi.encodePacked(
+             "Transaction(address to,uint256 amount,uint256 nonce)",
+             keccak256(abi.encodePacked(
+                 to, // to
+                 amount, // amount
+                 nonce // nonce
+             ))
+         ))
+     ));
+     ```
+
+4. Sign the Hashed Data on the Client:
+   - The client-side code should use the user's private key to sign the hashed data.
+   - Here's an example of how the data can be signed on the client using MetaMask:
+     ```javascript
+     const signature = await ethereum.request({
+         method: 'eth_signTypedData_v4',
+         params: [account, JSON.stringify({ types, domain, primaryType, message })],
+     });
+     ```
+
+5. Pass the Signature and Data to the Smart Contract:
+   - The client should pass the signature and the original data to the smart contract for verification.
+   - Here's an example of how the signature and data can be passed to the smart contract:
+     ```solidity
+     function verifySignature(address to, uint256 amount, uint256 nonce, bytes memory signature) public view returns (bool) {
+         bytes32 hash = keccak256(abi.encodePacked(
+             "\x19\x01",
+             domainSeparator,
+             keccak256(abi.encode(
+                 transactionTypeHash,
+                 to,
+                 amount,
+                 nonce
+             ))
+         ));
+         address signer = ECDSA.recover(hash, signature);
+         return signer == to;
+     }
+     ```
+
+6. Verify the Signature on the Smart Contract:
+   - The smart contract should verify the signature by recovering the signer's address from the signature and comparing it with the expected signer's address.
+   - Here's an example of how the signature can be verified on the smart contract:
+     ```solidity
+     function verifySignature(address to, uint256 amount, uint256 nonce, bytes memory signature) public view returns (bool) {
+         bytes32 hash = keccak256(abi.encodePacked(
+             "\x19\x01",
+             domainSeparator,
+             keccak256(abi.encode(
+                 transactionTypeHash,
+                 to,
+                 amount,
+                 nonce
+             ))
+         ));
+         address signer = ECDSA.recover(hash, signature);
+         return signer == to;
+     }
+     ```
+
+Please note that this is a simplified example to demonstrate the basic steps involved in EIP712 signature and verification. The actual implementation may vary depending on your specific use case and requirements.
